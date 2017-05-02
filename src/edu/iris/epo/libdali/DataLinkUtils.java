@@ -204,16 +204,6 @@ public class DataLinkUtils implements DataLinkConst {
     }
 
     /**
-     * Get the version text.
-     * 
-     * @return the version text.
-     */
-    public static String getVersionText() {
-        return JLIBDALI_PACKAGE + " version " + JLIBDALI_VERSION + " (" +
-                LIBDALI_RELEASE + ")";
-    }
-
-    /**
      * Determines if the String is null, empty or all white space.
      * 
      * @param s

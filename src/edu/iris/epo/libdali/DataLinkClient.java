@@ -29,6 +29,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 
 /**
@@ -88,8 +89,10 @@ public class DataLinkClient implements Closeable, DataLinkConst {
         }
     }
 
-    /** libdali version */
-    private static final String VERSION = "1.0.2017.075";
+    private static final AtomicBoolean first = new AtomicBoolean();
+
+    /** Jlibdali version */
+    public static final String VERSION = "1.0.2017.122";
 
     /**
      * Close the data destination quietly ignoring any I/O exceptions.
@@ -107,12 +110,12 @@ public class DataLinkClient implements Closeable, DataLinkConst {
     }
 
     /**
-     * Get the program version.
+     * Get the program version text.
      * 
-     * @return the program version.
+     * @return the program version text.
      */
     public static String getVersion() {
-        return VERSION;
+        return "Jlibdali version " + VERSION;
     }
 
     private SocketAddress address;
@@ -162,7 +165,9 @@ public class DataLinkClient implements Closeable, DataLinkConst {
         clientid = DataLinkUtils.genClientid(progname);
         sendBuffer[sendBuflen++] = 'D';
         sendBuffer[sendBuflen++] = 'L';
-        logger.log(Level.INFO, DataLinkUtils.getVersionText());
+        if (first.compareAndSet(false, true)) {
+            logger.log(Level.INFO, DataLinkClient.getVersion());
+        }
     }
 
     private void addBuffer(byte b) {

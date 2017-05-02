@@ -31,12 +31,6 @@ import java.nio.charset.Charset;
  * @author kevin
  */
 public interface DataLinkConst {
-    /** Jlibdali package */
-    public static final String JLIBDALI_PACKAGE = "Jlibdali";
-    /** Jlibdali version */
-    public static final String JLIBDALI_VERSION = "1.0";
-    /** Jlibdali release date */
-    public static final String LIBDALI_RELEASE = "2017.122";
     /** The ASCII character set */
     public static final Charset ASCII = Charset.forName("US-ASCII");
     /** The DataLink address separator */
