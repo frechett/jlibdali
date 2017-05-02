@@ -31,6 +31,12 @@ import java.nio.charset.Charset;
  * @author kevin
  */
 public interface DataLinkConst {
+    /** Jlibdali package */
+    public static final String JLIBDALI_PACKAGE = "Jlibdali";
+    /** Jlibdali version */
+    public static final String JLIBDALI_VERSION = "1.0";
+    /** Jlibdali release date */
+    public static final String LIBDALI_RELEASE = "2017.122";
     /** The ASCII character set */
     public static final Charset ASCII = Charset.forName("US-ASCII");
     /** The DataLink address separator */
@@ -60,10 +66,14 @@ public interface DataLinkConst {
     public static final int MAXPACKETSIZE = 16384;
     /** The miniSEED type */
     public static final String MSEED_TYPE = "MSEED";
+    /** The number of milliseconds per microsecond */
+    public static final long MS_PER_MICROSECOND = 1000L;
     /** Quote text. */
     public static final String QUOTE = "\"";
     /** The regular expression for matching whitespace */
     public static final String RE_WS = "\\s+";
+    /** NULL string for SEED location code */
+    public static final String SEED_LOC_NULL_STRING = "--";
     /** The SeedLink packet size */
     public static final int SLINKPACKETSIZE = 512;
     /** Space text. */

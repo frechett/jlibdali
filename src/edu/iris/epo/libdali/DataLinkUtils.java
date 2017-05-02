@@ -182,6 +182,38 @@ public class DataLinkUtils implements DataLinkConst {
     }
 
     /**
+     * Get the time in microseconds.
+     * 
+     * @param timeMicroSeconds
+     *            the time in milliseconds.
+     * @return the time in microseconds.
+     */
+    public static long getTimeMicroseconds(long timeMilliSeconds) {
+        return timeMilliSeconds * MS_PER_MICROSECOND;
+    }
+
+    /**
+     * Get the time in milliseconds.
+     * 
+     * @param timeMicroSeconds
+     *            the time in microseconds.
+     * @return the time in milliseconds.
+     */
+    public static long getTimeMilliseconds(long timeMicroSeconds) {
+        return timeMicroSeconds / MS_PER_MICROSECOND;
+    }
+
+    /**
+     * Get the version text.
+     * 
+     * @return the version text.
+     */
+    public static String getVersionText() {
+        return JLIBDALI_PACKAGE + " version " + JLIBDALI_VERSION + " (" +
+                LIBDALI_RELEASE + ")";
+    }
+
+    /**
      * Determines if the String is null, empty or all white space.
      * 
      * @param s

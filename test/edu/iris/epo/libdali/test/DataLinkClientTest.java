@@ -46,8 +46,8 @@ public class DataLinkClientTest implements DataLinkConst, Runnable {
         if (writeFlag) {
             packetlen = SLINKPACKETSIZE;
             packet = new byte[packetlen];
-            datastart = System.currentTimeMillis() * 1000;
-            dataend = datastart + 60 * 1000 * 1000;
+            datastart = System.currentTimeMillis() * MS_PER_MICROSECOND;
+            dataend = datastart + 60 * 1000 * MS_PER_MICROSECOND;
             // IU_ANMO_00_BHZ/MSEED
             streamid = DataLinkUtils.createStreamid("IU", "ANMO", "00", "BHZ");
             for (int i = 0; i < packetlen; i++) {

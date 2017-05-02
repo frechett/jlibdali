@@ -27,19 +27,19 @@ package edu.iris.epo.libdali;
  * @author kevin
  */
 public class DLPacket implements DataLinkConst {
-    /** Data end time */
+    /** Data end time in microseconds */
     private long dataend;
 
     /** Data size in bytes */
     private int datasize;
 
-    /** Data start time */
+    /** Data start time in microseconds */
     private long datastart;
 
     /** Packet ID */
     private long pktid;
 
-    /** Packet time */
+    /** Packet time in microseconds */
     private long pkttime;
 
     /** Stream ID */
@@ -57,7 +57,7 @@ public class DLPacket implements DataLinkConst {
     }
 
     /**
-     * @return the dataend
+     * @return the dataend in microseconds
      */
     public long getDataend() {
         return dataend;
@@ -71,7 +71,7 @@ public class DLPacket implements DataLinkConst {
     }
 
     /**
-     * @return the datastart
+     * @return the datastart in microseconds
      */
     public long getDatastart() {
         return datastart;
@@ -85,7 +85,7 @@ public class DLPacket implements DataLinkConst {
     }
 
     /**
-     * @return the pkttime
+     * @return the pkttime in microseconds
      */
     public long getPkttime() {
         return pkttime;
@@ -141,7 +141,7 @@ public class DLPacket implements DataLinkConst {
 
     /**
      * @param dataend
-     *            the dataend to set
+     *            the dataend to set in microseconds
      */
     public void setDataend(long dataend) {
         this.dataend = dataend;
@@ -163,7 +163,7 @@ public class DLPacket implements DataLinkConst {
 
     /**
      * @param datastart
-     *            the datastart to set
+     *            the datastart to set in microseconds
      */
     public void setDatastart(long datastart) {
         this.datastart = datastart;
@@ -179,7 +179,7 @@ public class DLPacket implements DataLinkConst {
 
     /**
      * @param pkttime
-     *            the pkttime to set
+     *            the pkttime to set in microseconds
      */
     public void setPkttime(long pkttime) {
         this.pkttime = pkttime;

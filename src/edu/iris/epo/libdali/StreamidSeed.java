@@ -23,6 +23,22 @@ package edu.iris.epo.libdali;
 
 public class StreamidSeed extends Streamid implements DataLinkConst {
     /**
+     * Get the location code replacing the
+     * {@link DataLinkConst#SEED_LOC_NULL_STRING} with an empty string if
+     * needed.
+     * 
+     * @param loc
+     *            the location code.
+     * @return the location code.
+     */
+    public static String getLoc(String loc) {
+        if (SEED_LOC_NULL_STRING.equals(loc)) {
+            loc = EMPTY;
+        }
+        return loc;
+    }
+
+    /**
      * Create the SEED stream ID.
      * <p>
      * For example, the stream ID text:
@@ -52,7 +68,7 @@ public class StreamidSeed extends Streamid implements DataLinkConst {
      *            the channel code.
      */
     public StreamidSeed(String net, String sta, String loc, String chan) {
-        super(net, sta, loc, chan, MSEED_TYPE);
+        super(net, sta, getLoc(loc), chan, MSEED_TYPE);
     }
 
     /**

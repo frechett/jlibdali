@@ -162,6 +162,7 @@ public class DataLinkClient implements Closeable, DataLinkConst {
         clientid = DataLinkUtils.genClientid(progname);
         sendBuffer[sendBuflen++] = 'D';
         sendBuffer[sendBuflen++] = 'L';
+        logger.log(Level.INFO, DataLinkUtils.getVersionText());
     }
 
     private void addBuffer(byte b) {
@@ -681,7 +682,7 @@ public class DataLinkClient implements Closeable, DataLinkConst {
      *            position or <code>DATALINK_POSITION_LATEST</code for the
      *            latest position.
      * @param pkttime
-     *            the Packet time for the specified packet ID.
+     *            the Packet time for the specified packet ID in microseconds.
      * @return the DataLink return value.
      * @see #DATALINK_POSITION_EARLIEST, #DATALINK_POSITION_LATEST
      */
@@ -719,7 +720,7 @@ public class DataLinkClient implements Closeable, DataLinkConst {
      * after the specified data time.
      * 
      * @param datatime
-     *            the data time.
+     *            the data time in microseconds.
      * @return the DataLink return value.
      */
     public DL_RETVAL positionAfter(long datatime) {
