@@ -1,5 +1,6 @@
 package edu.iris.epo.libdali.test;
 
+import edu.iris.epo.libdali.DLPacket;
 import edu.iris.epo.libdali.DataLinkClient;
 import edu.iris.epo.libdali.DataLinkConst;
 import edu.iris.epo.libdali.DataLinkUtils;
@@ -17,6 +18,7 @@ public class DataLinkClientTest implements DataLinkConst, Runnable {
     }
 
     private boolean ack = true;
+    private boolean blockflag = false;
     private boolean collectFlag = true;
     private long dataend;
     private long datastart;
@@ -37,9 +39,6 @@ public class DataLinkClientTest implements DataLinkConst, Runnable {
 
     @Override
     public void run() {
-        String s;
-        String infotype = "STATUS";
-        String infomatch = null;
         DataLinkClient dlc = new DataLinkClient(
                 DataLinkClientTest.class.getSimpleName(), null);
 
@@ -56,98 +55,10 @@ public class DataLinkClientTest implements DataLinkConst, Runnable {
         }
 
         try {
-            if (!dlc.connect()) {
-                return;
-            }
-
-            if (dlc.exchangeIDs().isError()) {
-                return;
-            }
-            if (!dlc.isWritePerm() && writeFlag) {
-                System.err.println("Write is not permitted");
-                writeFlag = false;
-                packetlen = 0;
-                packet = null;
-            }
-            maxpktsize = dlc.getMaxPktSize();
-
-            if (getInfoFlag) {
-                if (!dlc.getinfo(infotype, infomatch).isError()) {
-                    s = dlc.getReadText();
-                    System.out.printf("getinfo header:\n\"%s\" (%d)\n", s,
-                            s.length());
-                }
-            }
-
-            if (streamid != null && packet != null &&
-                    packet.length >= packetlen && datastart > 0 &&
-                    dataend > datastart) {
-                if (packetlen > maxpktsize) {
-                    System.err.printf(
-                            "Cannot write packet, packet length %d is larger than maximum %d\n",
-                            packetlen, maxpktsize);
-                } else {
-                    dlc.write(packet, packetlen, streamid, datastart, dataend,
-                            ack);
-                    if (ack) {
-                        s = dlc.getReadText();
-                        System.out.printf("write header:\n\"%s\" (%d)\n", s,
-                                s.length());
-                    }
-                }
-            }
-
-            if (rejectpattern != null) {
-                if (!dlc.reject(rejectpattern).isError()) {
-                    s = dlc.getReadText();
-                    System.out.printf("reject header:\n\"%s\" (%d)\n", s,
-                            s.length());
-                }
-            }
-
-            if (stream_matchpattern != null) {
-                if (!dlc.match(stream_matchpattern).isError()) {
-                    s = dlc.getReadText();
-                    System.out.printf("match header:\n\"%s\" (%d)\n", s,
-                            s.length());
-                }
-            }
-
-            if (stream_pktid != 0 || stream_pkttime != 0) {
-                if (stream_pktid == 0) {
-                    if (!dlc.positionAfter(stream_pkttime).isError()) {
-                        s = dlc.getReadText();
-                        System.out.printf(
-                                "positionAfter header:\n\"%s\" (%d)\n", s,
-                                s.length());
-                    }
-                } else {
-                    if (!dlc.position(stream_pktid, stream_pkttime).isError()) {
-                        s = dlc.getReadText();
-                        System.out.printf("position header:\n\"%s\" (%d)\n", s,
-                                s.length());
-                    }
-                }
-            }
-
-            if (read_pktid != 0) {
-                if (!dlc.read(read_pktid).isError()) {
-                    System.out.printf("read: %s\n", dlc.getPacket());
-                }
-            }
-
-            if (collectFlag) {
-                DL_RETVAL retVal;
-                // endflag = true;
-                if (!(retVal = dlc.collect(endflag)).isError() &&
-                        dlc.getPacket().getDatasize() != 0) {
-                    endflag = true;
-                    while ((!(retVal = dlc.collect(endflag)).isError() &&
-                            dlc.getPacket().getDatasize() != 0)) {
-                        if (!retVal.isError()) {
-                            System.out.printf("read: %s\n", dlc.getPacket());
-                        }
-                    }
+            if (dlc.connect()) {
+                DL_RETVAL retVal = runNow(dlc);
+                if (retVal.isError()) {
+                    System.err.println(retVal);
                 }
             }
         } catch (Exception ex) {
@@ -155,5 +66,104 @@ public class DataLinkClientTest implements DataLinkConst, Runnable {
         } finally {
             dlc.close();
         }
+    }
+
+    private DL_RETVAL runNow(final DataLinkClient dlc) {
+        String s;
+        String infotype = "STATUS";
+        String infomatch = null;
+        DL_RETVAL retVal;
+
+        if ((retVal = dlc.exchangeIDs()).isError()) {
+            return retVal;
+        }
+        if (!dlc.isWritePerm() && writeFlag) {
+            System.err.println("Write is not permitted");
+            writeFlag = false;
+            packetlen = 0;
+            packet = null;
+        }
+        maxpktsize = dlc.getMaxPktSize();
+
+        if (getInfoFlag) {
+            if (!dlc.getinfo(infotype, infomatch).isError()) {
+                s = dlc.getReadText();
+                System.out.printf("getinfo header:\n\"%s\" (%d)\n", s,
+                        s.length());
+            }
+        }
+
+        if (streamid != null && packet != null && packet.length >= packetlen &&
+                datastart > 0 && dataend > datastart) {
+            if (packetlen > maxpktsize) {
+                System.err.printf(
+                        "Cannot write packet, packet length %d is larger than maximum %d\n",
+                        packetlen, maxpktsize);
+            } else {
+                dlc.write(packet, packetlen, streamid, datastart, dataend, ack);
+                if (ack) {
+                    s = dlc.getReadText();
+                    System.out.printf("write header:\n\"%s\" (%d)\n", s,
+                            s.length());
+                }
+            }
+        }
+
+        if (rejectpattern != null) {
+            if ((retVal = dlc.reject(rejectpattern)).isError()) {
+                return retVal;
+            }
+            s = dlc.getReadText();
+            System.out.printf("reject header:\n\"%s\" (%d)\n", s, s.length());
+        }
+
+        if (stream_matchpattern != null) {
+            if ((retVal = dlc.match(stream_matchpattern)).isError()) {
+                return retVal;
+            }
+            s = dlc.getReadText();
+            System.out.printf("match %d streams, header:\n\"%s\" (%d)\n",
+                    dlc.getReponseValueLong(), s, s.length());
+        }
+
+        if (stream_pktid != 0 || stream_pkttime != 0) {
+            if (stream_pktid == 0) {
+                if ((retVal = dlc.positionAfter(stream_pkttime)).isError()) {
+                    return retVal;
+                }
+                s = dlc.getReadText();
+                System.out.printf("positionAfter header:\n\"%s\" (%d)\n", s,
+                        s.length());
+            } else {
+                if ((retVal = dlc.position(stream_pktid, stream_pkttime))
+                        .isError()) {
+                    return retVal;
+                }
+                s = dlc.getReadText();
+                System.out.printf("position header:\n\"%s\" (%d)\n", s,
+                        s.length());
+            }
+        }
+
+        if (read_pktid != 0) {
+            if ((retVal = dlc.read(read_pktid)).isError()) {
+                return retVal;
+            }
+            System.out.printf("read: %s\n", dlc.getPacket());
+        }
+
+        if (collectFlag) {
+            DLPacket dlpacket;
+            while ((!(retVal = dlc.collect(endflag, blockflag)).isError())) {
+                if ((dlpacket = dlc.getPacket()).getDatasize() == 0) {
+                    System.out.printf("No more data");
+                    break;
+                }
+                if (!retVal.isError()) {
+                    System.out.printf("read: %s\n", dlpacket);
+                }
+            }
+        }
+        return retVal;
     }
 }

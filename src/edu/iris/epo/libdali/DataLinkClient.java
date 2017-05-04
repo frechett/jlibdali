@@ -52,6 +52,8 @@ public class DataLinkClient implements Closeable, DataLinkConst {
         INVALIDARG,
         /** Invalid response */
         INVALIDRESP,
+        /** No data in non-blocking mode */
+        NO_DATA,
         /**
          * No DataLink ID was found in the response
          * ({@link DataLinkConst#DATALINK_ID}
@@ -85,14 +87,14 @@ public class DataLinkClient implements Closeable, DataLinkConst {
          * @return true if error, false otherwise.
          */
         public boolean isError() {
-            return !this.equals(_NO_ERROR);
+            return this != _NO_ERROR && this != NO_DATA;
         }
     }
 
     private static final AtomicBoolean first = new AtomicBoolean();
 
     /** Jlibdali version */
-    public static final String VERSION = "1.0.2017.122";
+    public static final String VERSION = "1.0.2017.124";
 
     /**
      * Close the data destination quietly ignoring any I/O exceptions.
@@ -213,9 +215,12 @@ public class DataLinkClient implements Closeable, DataLinkConst {
      * 
      * @param endflag
      *            true to end, false otherwise.
+     * @param blockflag
+     *            true to block until data is available, false otherwise.
      * @return the DataLink return value.
      */
-    public DL_RETVAL collect(boolean endflag) {
+    public DL_RETVAL collect(boolean endflag, boolean blockflag) {
+        dlpacket.clear();
         if (socket == null) {
             log(Level.WARNING, "collect: no socket");
             return DL_RETVAL.NO_SOCKET;
@@ -258,13 +263,15 @@ public class DataLinkClient implements Closeable, DataLinkConst {
             }
         }
 
-        dlpacket.clear();
         for (;;) {
             if (terminateFlag) {
                 retVal = DL_RETVAL._NO_ERROR;
                 break;
             }
-            retVal = recvheader();
+            retVal = recvheader(blockflag);
+            if (retVal == DL_RETVAL.NO_DATA) {
+                break;
+            }
             if (terminateFlag) {
                 retVal = DL_RETVAL._NO_ERROR;
                 break;
@@ -519,6 +526,25 @@ public class DataLinkClient implements Closeable, DataLinkConst {
     }
 
     /**
+     * @return the <code>resp_value</code> as a long or
+     *         <code>Long.MIN_VALUE</code> if none.
+     */
+    public long getReponseValueLong() {
+        try {
+            return Long.parseLong(resp_value);
+        } catch (Exception ex) {
+        }
+        return Long.MIN_VALUE;
+    }
+
+    /**
+     * @return the <code>resp_value</code>
+     */
+    public String getResponseValue() {
+        return resp_value;
+    }
+
+    /**
      * Gets the server version of the DataLink protocol.
      * 
      * @return the server version of the DataLink protocol.
@@ -545,7 +571,7 @@ public class DataLinkClient implements Closeable, DataLinkConst {
                 resp_value = ra[1];
                 resp_size = Integer.parseInt(ra[2]);
                 if (resp_size > 0 && resp_size < MAXPACKETSIZE) {
-                    return recvdata(resp_size);
+                    return recvdata(resp_size, true);
                 }
             }
         } catch (Exception ex) {
@@ -651,10 +677,14 @@ public class DataLinkClient implements Closeable, DataLinkConst {
      * <p>
      * The packet match pattern limits which packets are sent to the client in
      * streaming mode, this is the mode used for #collect() requests.
+     * <p>
+     * The <code>getReponseValueLong()</code> may be called to determine the
+     * number of currently matched streams on success.
      * 
      * @param matchpattern
      *            the match pattern.
      * @return the DataLink return value.
+     * @see #getReponseValueLong()
      */
     public DL_RETVAL match(String matchpattern) {
         if (socket == null) {
@@ -680,6 +710,9 @@ public class DataLinkClient implements Closeable, DataLinkConst {
 
     /**
      * Position the client read position.
+     * <p>
+     * The <code>getReponseValueLong()</code> may be called to determine the
+     * packet ID on success on success.
      * 
      * @param pktid
      *            the Packet ID to set position to,
@@ -690,6 +723,7 @@ public class DataLinkClient implements Closeable, DataLinkConst {
      *            the Packet time for the specified packet ID in microseconds.
      * @return the DataLink return value.
      * @see #DATALINK_POSITION_EARLIEST, #DATALINK_POSITION_LATEST
+     * @see #getReponseValueLong()
      */
     public DL_RETVAL position(long pktid, long pkttime) {
         if (socket == null) {
@@ -723,10 +757,14 @@ public class DataLinkClient implements Closeable, DataLinkConst {
      * <p>
      * Set the client read position to the first packet with a data end time
      * after the specified data time.
+     * <p>
+     * The <code>getReponseValueLong()</code> may be called to determine the
+     * packet ID on success on success.
      * 
      * @param datatime
      *            the data time in microseconds.
      * @return the DataLink return value.
+     * @see #getReponseValueLong()
      */
     public DL_RETVAL positionAfter(long datatime) {
         if (socket == null) {
@@ -772,7 +810,7 @@ public class DataLinkClient implements Closeable, DataLinkConst {
             log(Level.INFO, "read: header=\"%s\"", header);
             retVal = sendpacket(header, null, 0, true);
         } else {
-            retVal = recvheader();
+            retVal = recvheader(true);
         }
         if (!retVal.isError()) {
             retVal = readPacket();
@@ -792,7 +830,7 @@ public class DataLinkClient implements Closeable, DataLinkConst {
         if (respstr.startsWith(prefix)) {
             if (dlpacket.parse(respstr.substring(prefix.length()))) {
                 int readlen = dlpacket.getDatasize();
-                retVal = recvdata(readlen);
+                retVal = recvdata(readlen, true);
                 if (!retVal.isError() && bytesread != readlen) {
                     log(Level.WARNING, "read: problem receiving packet data");
                     retVal = DL_RETVAL.RECV_ERROR;
@@ -818,15 +856,20 @@ public class DataLinkClient implements Closeable, DataLinkConst {
      * 
      * @param readlen
      *            the number of bytes to read.
+     * @param blockflag
+     *            true to block until data is available, false otherwise.
      * @return the DataLink return value.
      */
-    private DL_RETVAL recvdata(int readlen) {
+    private DL_RETVAL recvdata(int readlen, boolean blockflag) {
         readText = null;
         bytesread = 0;
         int nrecv = 0;
         try {
             // Recv until readlen bytes have been read
             while (bytesread < readlen) {
+                if (!blockflag && is.available() == 0) {
+                    return DL_RETVAL.NO_DATA;
+                }
                 if ((nrecv = is.read(readBuffer, bytesread,
                         readlen - bytesread)) < 0) {
                     return DL_RETVAL.EOF;
@@ -851,12 +894,14 @@ public class DataLinkClient implements Closeable, DataLinkConst {
     /**
      * Receive DataLink packet header.
      * 
+     * @param blockflag
+     *            true to block until data is available, false otherwise.
      * @return the DataLink return value.
      */
-    private DL_RETVAL recvheader() {
+    private DL_RETVAL recvheader(boolean blockflag) {
         int len = 3;
-        DL_RETVAL retVal = recvdata(len);
-        if (retVal.isError()) {
+        DL_RETVAL retVal = recvdata(len, blockflag);
+        if (retVal.isError() || retVal == DL_RETVAL.NO_DATA) {
             return retVal;
         }
         if (bytesread != len) {
@@ -873,7 +918,7 @@ public class DataLinkClient implements Closeable, DataLinkConst {
             log(Level.WARNING, "recvheader: Invalid header length: %d", len);
             return DL_RETVAL.INVALID_HEADER_LEN;
         }
-        retVal = recvdata(len);
+        retVal = recvdata(len, true);
         if (!retVal.isError() && bytesread != len) {
             retVal = DL_RETVAL.RECV_ERROR;
             log(Level.WARNING, "recvheader: %d %d", len, bytesread);
@@ -970,7 +1015,7 @@ public class DataLinkClient implements Closeable, DataLinkConst {
             retVal = senddata(packet, 0, packetlen);
         }
         if (!retVal.isError() && ack) {
-            retVal = recvheader();
+            retVal = recvheader(true);
         }
         return retVal;
     }
