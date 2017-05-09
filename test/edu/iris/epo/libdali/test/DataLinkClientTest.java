@@ -5,6 +5,7 @@ import edu.iris.epo.libdali.DataLinkClient;
 import edu.iris.epo.libdali.DataLinkConst;
 import edu.iris.epo.libdali.DataLinkUtils;
 import edu.iris.epo.libdali.IStreamid;
+import edu.iris.epo.libdali.StreamidSeed;
 import edu.iris.epo.libdali.DataLinkClient.DL_RETVAL;
 
 /**
@@ -14,17 +15,26 @@ import edu.iris.epo.libdali.DataLinkClient.DL_RETVAL;
  */
 public class DataLinkClientTest implements DataLinkConst, Runnable {
     public static void main(String[] args) {
+        String arg;
+        String[] subArg;
         DataLinkClientTest test = new DataLinkClientTest();
-        if (args.length == 1 && args[0].equalsIgnoreCase("LATEST")) {
-            test.collectFlag = false;
-            test.stream_pktid = DATALINK_POSITION_LATEST;
-        } else if (args.length == 1 && args[0].equalsIgnoreCase("EARLIEST")) {
-            test.collectFlag = false;
-            test.stream_pktid = DATALINK_POSITION_EARLIEST;
-        } else if (args.length > 0) {
-            test.read_pktids = new long[args.length];
-            for (int index = 0; index < args.length; index++) {
-                test.read_pktids[index] = Long.parseLong(args[index]);
+        for (int index = 0; index < args.length; index++) {
+            arg = args[index].toUpperCase();
+            if (arg.equals("LATEST")) {
+                test.stream_pktid = DATALINK_POSITION_LATEST;
+            } else if (arg.equals("EARLIEST")) {
+                test.stream_pktid = DATALINK_POSITION_EARLIEST;
+            } else if ((subArg = arg.split("=")).length == 2) {
+                arg = subArg[0];
+                if (arg.startsWith("NET")) {
+                    test.net = subArg[1];
+                } else if (arg.startsWith("STA")) {
+                    test.sta = subArg[1];
+                } else if (arg.startsWith("LOC")) {
+                    test.loc = subArg[1];
+                } else if (arg.startsWith("CHA")) {
+                    test.chan = subArg[1];
+                }
             }
         }
         test.run();
@@ -40,8 +50,11 @@ public class DataLinkClientTest implements DataLinkConst, Runnable {
     private int maxpktsize;
     private byte[] packet;
     private int packetlen;
-    private long[] read_pktids;
     private String rejectpattern;
+    private String net = "S";
+    private String sta;
+    private String loc = SEED_LOC_NULL_STRING;
+    private String chan = "BHZ";
     private String stream_matchpattern;
     // packet ID, 0 for after, DATALINK_POSITION_EARLIEST,
     // DATALINK_POSITION_LATEST
@@ -54,6 +67,11 @@ public class DataLinkClientTest implements DataLinkConst, Runnable {
     public void run() {
         DataLinkClient dlc = new DataLinkClient(
                 DataLinkClientTest.class.getSimpleName(), null);
+
+        if (sta != null && stream_matchpattern == null) {
+            stream_matchpattern =
+                    new StreamidSeed(net, sta, loc, chan).getText();
+        }
 
         if (writeFlag) {
             packetlen = SLINKPACKETSIZE;
@@ -135,17 +153,9 @@ public class DataLinkClientTest implements DataLinkConst, Runnable {
                 return retVal;
             }
             s = dlc.getReadText();
-            System.out.printf("match %d streams, header:\n\"%s\" (%d)\n",
-                    dlc.getReponseValueLong(), s, s.length());
-        }
-
-        if (read_pktids != null && read_pktids.length != 0) {
-            for (long read_pktid : read_pktids) {
-                if ((retVal = dlc.read(read_pktid)).isError()) {
-                    return retVal;
-                }
-                System.out.printf("read %d: %s\n", read_pktid, dlc.getPacket());
-            }
+            System.out.printf("match %s %d streams, header:\n\"%s\" (%d)\n",
+                    stream_matchpattern, dlc.getReponseValueLong(), s,
+                    s.length());
         }
 
         if (stream_pktid == 0) {
@@ -174,14 +184,6 @@ public class DataLinkClientTest implements DataLinkConst, Runnable {
                 if (!retVal.isError()) {
                     System.out.printf("read: %s\n", dlpacket);
                 }
-            }
-        } else {
-            long read_pktid = dlc.getReponseValueLong();
-            if (read_pktid > 0) {
-                if ((retVal = dlc.read(read_pktid)).isError()) {
-                    return retVal;
-                }
-                System.out.printf("read %d: %s\n", read_pktid, dlc.getPacket());
             }
         }
         return retVal;
