@@ -14,7 +14,14 @@ import edu.iris.epo.libdali.DataLinkClient.DL_RETVAL;
  */
 public class DataLinkClientTest implements DataLinkConst, Runnable {
     public static void main(String[] args) {
-        new DataLinkClientTest().run();
+        DataLinkClientTest test = new DataLinkClientTest();
+        if (args.length > 0) {
+            test.read_pktids = new long[args.length];
+            for (int index = 0; index < args.length; index++) {
+                test.read_pktids[index] = Long.parseLong(args[index]);
+            }
+        }
+        test.run();
     }
 
     private boolean ack = true;
@@ -27,13 +34,13 @@ public class DataLinkClientTest implements DataLinkConst, Runnable {
     private int maxpktsize;
     private byte[] packet;
     private int packetlen;
-    private long read_pktid;
+    private long[] read_pktids;
     private String rejectpattern;
-    private String stream_matchpattern = "";
+    private String stream_matchpattern;
     // packet ID, 0 for after, DATALINK_POSITION_EARLIEST,
     // DATALINK_POSITION_LATEST
-    private long stream_pktid = 0;
-    private long stream_pkttime = 1;
+    private long stream_pktid = DATALINK_POSITION_EARLIEST;
+    private long stream_pkttime = 0;
     private IStreamid streamid;
     private boolean writeFlag = false;
 
@@ -126,7 +133,16 @@ public class DataLinkClientTest implements DataLinkConst, Runnable {
                     dlc.getReponseValueLong(), s, s.length());
         }
 
-        if (stream_pktid != 0 || stream_pkttime != 0) {
+        if (read_pktids != null && read_pktids.length != 0) {
+            for (long read_pktid : read_pktids) {
+                if ((retVal = dlc.read(read_pktid)).isError()) {
+                    return retVal;
+                }
+                System.out.printf("read %d: %s\n", read_pktid, dlc.getPacket());
+            }
+        }
+
+        if (collectFlag) {
             if (stream_pktid == 0) {
                 if ((retVal = dlc.positionAfter(stream_pkttime)).isError()) {
                     return retVal;
@@ -143,16 +159,7 @@ public class DataLinkClientTest implements DataLinkConst, Runnable {
                 System.out.printf("position header:\n\"%s\" (%d)\n", s,
                         s.length());
             }
-        }
 
-        if (read_pktid != 0) {
-            if ((retVal = dlc.read(read_pktid)).isError()) {
-                return retVal;
-            }
-            System.out.printf("read: %s\n", dlc.getPacket());
-        }
-
-        if (collectFlag) {
             DLPacket dlpacket;
             while ((!(retVal = dlc.collect(endflag, blockflag)).isError())) {
                 if ((dlpacket = dlc.getPacket()).getDatasize() == 0) {
