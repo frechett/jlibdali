@@ -94,7 +94,7 @@ public class DataLinkClient implements Closeable, DataLinkConst {
     private static final AtomicBoolean first = new AtomicBoolean();
 
     /** Jlibdali version */
-    public static final String VERSION = "1.0.2017.124";
+    public static final String VERSION = "1.0.2017.129";
 
     /**
      * Close the data destination quietly ignoring any I/O exceptions.
@@ -142,7 +142,7 @@ public class DataLinkClient implements Closeable, DataLinkConst {
     private float serverproto;
     private Socket socket;
     private boolean streamingEndFlag;
-    private boolean streamingFlag;
+    private volatile boolean streamingFlag;
     private volatile boolean terminateFlag;
     private boolean writeperm;
 
@@ -196,6 +196,7 @@ public class DataLinkClient implements Closeable, DataLinkConst {
      */
     @Override
     public void close() {
+        streamingFlag = false;
         terminateFlag = true;
         closeQuietly(socket);
         initFlag = false;
@@ -221,6 +222,9 @@ public class DataLinkClient implements Closeable, DataLinkConst {
      */
     public DL_RETVAL collect(boolean endflag, boolean blockflag) {
         dlpacket.clear();
+        if (terminateFlag) {
+            return DL_RETVAL._NO_ERROR;
+        }
         if (socket == null) {
             log(Level.WARNING, "collect: no socket");
             return DL_RETVAL.NO_SOCKET;
@@ -656,6 +660,15 @@ public class DataLinkClient implements Closeable, DataLinkConst {
     }
 
     /**
+     * Determines if this client is terminated.
+     * 
+     * @return true if terminated, false otherwise.
+     */
+    public boolean isTerminated() {
+        return terminateFlag;
+    }
+
+    /**
      * Checks if there is write permission.
      * 
      * @return true if there is write permission, otherwise false.
@@ -867,6 +880,9 @@ public class DataLinkClient implements Closeable, DataLinkConst {
         try {
             // Recv until readlen bytes have been read
             while (bytesread < readlen) {
+                if (terminateFlag) {
+                    return DL_RETVAL._NO_ERROR;
+                }
                 if (!blockflag && is.available() == 0) {
                     return DL_RETVAL.NO_DATA;
                 }
