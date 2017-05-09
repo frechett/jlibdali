@@ -15,7 +15,13 @@ import edu.iris.epo.libdali.DataLinkClient.DL_RETVAL;
 public class DataLinkClientTest implements DataLinkConst, Runnable {
     public static void main(String[] args) {
         DataLinkClientTest test = new DataLinkClientTest();
-        if (args.length > 0) {
+        if (args.length == 1 && args[0].equalsIgnoreCase("LATEST")) {
+            test.collectFlag = false;
+            test.stream_pktid = DATALINK_POSITION_LATEST;
+        } else if (args.length == 1 && args[0].equalsIgnoreCase("EARLIEST")) {
+            test.collectFlag = false;
+            test.stream_pktid = DATALINK_POSITION_EARLIEST;
+        } else if (args.length > 0) {
             test.read_pktids = new long[args.length];
             for (int index = 0; index < args.length; index++) {
                 test.read_pktids[index] = Long.parseLong(args[index]);
@@ -142,24 +148,23 @@ public class DataLinkClientTest implements DataLinkConst, Runnable {
             }
         }
 
-        if (collectFlag) {
-            if (stream_pktid == 0) {
-                if ((retVal = dlc.positionAfter(stream_pkttime)).isError()) {
-                    return retVal;
-                }
-                s = dlc.getReadText();
-                System.out.printf("positionAfter header:\n\"%s\" (%d)\n", s,
-                        s.length());
-            } else {
-                if ((retVal = dlc.position(stream_pktid, stream_pkttime))
-                        .isError()) {
-                    return retVal;
-                }
-                s = dlc.getReadText();
-                System.out.printf("position header:\n\"%s\" (%d)\n", s,
-                        s.length());
+        if (stream_pktid == 0) {
+            if ((retVal = dlc.positionAfter(stream_pkttime)).isError()) {
+                return retVal;
             }
+            s = dlc.getReadText();
+            System.out.printf("positionAfter header:\n\"%s\" (%d)\n", s,
+                    s.length());
+        } else {
+            if ((retVal = dlc.position(stream_pktid, stream_pkttime))
+                    .isError()) {
+                return retVal;
+            }
+            s = dlc.getReadText();
+            System.out.printf("position header:\n\"%s\" (%d)\n", s, s.length());
+        }
 
+        if (collectFlag) {
             DLPacket dlpacket;
             while ((!(retVal = dlc.collect(endflag, blockflag)).isError())) {
                 if ((dlpacket = dlc.getPacket()).getDatasize() == 0) {
@@ -169,6 +174,14 @@ public class DataLinkClientTest implements DataLinkConst, Runnable {
                 if (!retVal.isError()) {
                     System.out.printf("read: %s\n", dlpacket);
                 }
+            }
+        } else {
+            long read_pktid = dlc.getReponseValueLong();
+            if (read_pktid > 0) {
+                if ((retVal = dlc.read(read_pktid)).isError()) {
+                    return retVal;
+                }
+                System.out.printf("read %d: %s\n", read_pktid, dlc.getPacket());
             }
         }
         return retVal;
