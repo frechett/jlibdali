@@ -94,7 +94,7 @@ public class DataLinkClient implements Closeable, DataLinkConst {
     private static final AtomicBoolean first = new AtomicBoolean();
 
     /** Jlibdali version */
-    public static final String VERSION = "1.0.2017.129";
+    public static final String VERSION = "1.0.2017.130";
 
     /**
      * Close the data destination quietly ignoring any I/O exceptions.
@@ -992,6 +992,7 @@ public class DataLinkClient implements Closeable, DataLinkConst {
     private DL_RETVAL senddata(byte[] buffer, int off, int len) {
         try {
             os.write(buffer, off, len);
+            os.flush();
             return DL_RETVAL._NO_ERROR;
         } catch (Exception ex) {
             log(Level.WARNING, "senddata: error sending data: %s",
